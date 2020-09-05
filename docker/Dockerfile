@@ -1,8 +1,6 @@
-ARG FROM=debian:buster-slim
-FROM ${FROM}
 
-ARG DEBIAN_FRONTEND=noninteractive
-ARG GIT_VERSION="2.26.2"
+FROM bitnami/minideb:buster
+
 ARG GH_RUNNER_VERSION
 ARG DOCKER_COMPOSE_VERSION="1.24.1"
 
@@ -15,34 +13,17 @@ ENV RUNNER_ALLOW_RUNASROOT=true
 ENV GITHUB_ACCESS_TOKEN=""
 ENV AGENT_TOOLSDIRECTORY=/opt/hostedtoolcache
 
-# Labels.
-LABEL maintainer="me@tcardonne.fr" \
-    org.label-schema.schema-version="1.0" \
-    org.label-schema.build-date=$BUILD_DATE \
-    org.label-schema.vcs-ref=$VCS_REF \
-    org.label-schema.name="tcardonne/github-runner" \
-    org.label-schema.description="Dockerized GitHub Actions runner." \
-    org.label-schema.url="https://github.com/tcardonne/docker-github-runner" \
-    org.label-schema.vcs-url="https://github.com/tcardonne/docker-github-runner" \
-    org.label-schema.vendor="Thomas Cardonne" \
-    org.label-schema.docker.cmd="docker run -it tcardonne/github-runner:latest"
-
 RUN DEBIAN_FRONTEND=noninteractive apt-get update && \
-    apt-get install -y \
-        curl \
-        apt-transport-https \
-        ca-certificates \
-        curl \
-        software-properties-common \
-        sudo \
-        supervisor \
-        jq \
-        iputils-ping \
-        build-essential \
-        zlib1g-dev \
-        gettext \
-        liblttng-ust0 \
-        libcurl4-openssl-dev
+  apt-get install -y \
+    apt-transport-https \
+    curl \
+    ca-certificates \
+    zlib1g-dev \
+    liblttng-ust0 \
+    git \
+    supervisor \
+    jq \
+    ;
 
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 RUN chmod 644 /etc/supervisor/conf.d/supervisord.conf
@@ -53,14 +34,6 @@ RUN curl -fsSL https://get.docker.com -o get-docker.sh && sh get-docker.sh
 # Install Docker-Compose
 RUN curl -L "https://github.com/docker/compose/releases/download/${DOCKER_COMPOSE_VERSION}/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose && \
     chmod +x /usr/local/bin/docker-compose
-
-RUN cd /tmp && \
-    curl -sL https://www.kernel.org/pub/software/scm/git/git-${GIT_VERSION}.tar.gz -o git.tgz && \
-    tar zxf git.tgz  && \
-    cd git-${GIT_VERSION}  && \
-    ./configure --prefix=/usr  && \
-    make  && \
-    make install
 
 RUN mkdir -p /home/runner ${AGENT_TOOLSDIRECTORY}
 
@@ -78,6 +51,21 @@ RUN GH_RUNNER_VERSION=${GH_RUNNER_VERSION:-$(curl --silent "https://api.github.c
 
 COPY entrypoint.sh /entrypoint.sh
 RUN chmod +x /entrypoint.sh
+
+ARG VERSION
+ARG BUILD_DATE
+ARG SOURCE_COMMIT
+
+LABEL org.opencontainers.image.authors="William Artero"
+LABEL org.opencontainers.image.url="https://github.com/wwmoraes/github-runner"
+LABEL org.opencontainers.image.documentation="https://github.com/wwmoraes/github-runner"
+LABEL org.opencontainers.image.source="https://github.com/wwmoraes/github-runner"
+LABEL org.opencontainers.image.version="${VERSION}"
+LABEL org.opencontainers.image.vendor="William Artero"
+LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.ref.name="wwmoraes/github-runner"
+LABEL org.opencontainers.image.created="${BUILD_DATE}"
+LABEL org.opencontainers.image.revision="${SOURCE_COMMIT}"
+
 ENTRYPOINT ["/entrypoint.sh"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
-

@@ -1,4 +1,4 @@
-APP_NAME="tcardonne/github-runner"
+IMAGE_NAME := wwmoraes/github-runner
 
 # HELP
 # This will output the help for each task
@@ -9,11 +9,18 @@ help: ## This help.
 
 .DEFAULT_GOAL := help
 
+build: BUILD_DATE=$(shell date -u '+%FT%TZ')
+build: SOURCE_COMMIT=$(shell git rev-parse HEAD)
+build: VERSION=$(shell git describe --tags || echo v0.0.0)
 build: ## Build the image
-	docker build -t $(APP_NAME) docker
+	@docker build \
+		--build-arg BUILD_DATE="$(BUILD_DATE)" \
+		--build-arg SOURCE_COMMIT="$(SOURCE_COMMIT)" \
+		--build-arg VERSION="$(VERSION)" \
+		-t $(IMAGE_NAME) docker
 
 shell: ## Creates a shell inside the container for debug purposes
-	docker run -it $(APP_NAME) bash
+	@docker run -it --env-file .env --entrypoint=bash $(IMAGE_NAME)
 
 shell-compose: ## Creates a shell inside the docker-compose service for debug purposes
-	docker-compose run --rm runner bash
+	@docker-compose run --rm --entrypoint /bin/bash runner
